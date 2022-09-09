@@ -18,7 +18,7 @@
 //! }
 //!
 //! assert_eq!(0.15, observations.into());
-//! assert_eq!("15/100 (15%)", format!("{}", observations).as_str());
+//! assert_eq!("15/100 (15.00%)", format!("{}", observations).as_str());
 //! ```
 //!
 //! In more complex situations, it may be helpful to supply a prior condition as well as a
@@ -38,10 +38,33 @@
 //! }
 //!
 //! assert_eq!(0.375, observations.into());
-//! assert_eq!("3/8 (37.5%)", format!("{}", observations).as_str());
+//! assert_eq!("3/8 (37.50%)", format!("{}", observations).as_str());
 //! ```
+//!
+//! `CountingRatio` objects can also be added together. Because they represent counted observations,
+//! the numerators and denominators are added together to produce the sum.
+//!
+//! ```
+//! use counting_ratio::CountingRatio;
+//!
+//! let mut obs1 = CountingRatio::new();
+//! for i in 0..100 {
+//!     obs1.observe(&i, |n| n % 7 == 0);
+//! }
+//!
+//! let mut obs2 = CountingRatio::new();
+//! for i in 0..20 {
+//!     obs2.observe(&i, |n| n % 4 == 0);
+//! }
+//!
+//! let obs3 = obs1 + obs2;
+//! assert_eq!(0.16666666666666666, obs3.into());
+//! assert_eq!("20/120 (16.67%)", format!("{}", obs3).as_str());
+//! ```
+//!
 
 use core::fmt::{Display, Formatter};
+use core::ops::{Add, AddAssign};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct CountingRatio {
@@ -68,6 +91,10 @@ impl CountingRatio {
             }
         }
     }
+
+    pub fn defined(&self) -> bool {
+        self.observations > 0
+    }
 }
 
 impl From<CountingRatio> for f64 {
@@ -78,6 +105,23 @@ impl From<CountingRatio> for f64 {
 
 impl Display for CountingRatio {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}/{} ({:2}%)", self.matches, self.observations, 100.0 * f64::from(*self))
+        write!(f, "{}/{} ({:.2}%)", self.matches, self.observations, 100.0 * f64::from(*self))
+    }
+}
+
+impl Add for CountingRatio {
+    type Output = CountingRatio;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut result = self;
+        result += rhs;
+        result
+    }
+}
+
+impl AddAssign for CountingRatio {
+    fn add_assign(&mut self, rhs: Self) {
+        self.matches += rhs.matches;
+        self.observations += rhs.observations;
     }
 }
