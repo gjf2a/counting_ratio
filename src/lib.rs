@@ -5,6 +5,9 @@
 //! Unlike conventional rational-number data types, because we are making observations we do
 //! not reduce our numerator and denominator - we preserve them as originally counted.
 //!
+//! The implementation of the `Display` trait is intended to give both a summative (percentage)
+//! view, as well as the raw counts.
+//!
 //! ```
 //! use counting_ratio::CountingRatio;
 //!
@@ -15,6 +18,7 @@
 //! }
 //!
 //! assert_eq!(0.15, observations.into());
+//! assert_eq!("15/100 (15%)", format!("{}", observations).as_str());
 //! ```
 //!
 //! In more complex situations, it may be helpful to supply a prior condition as well as a
@@ -34,7 +38,10 @@
 //! }
 //!
 //! assert_eq!(0.375, observations.into());
+//! assert_eq!("3/8 (37.5%)", format!("{}", observations).as_str());
 //! ```
+
+use core::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct CountingRatio {
@@ -66,5 +73,11 @@ impl CountingRatio {
 impl From<CountingRatio> for f64 {
     fn from(cr: CountingRatio) -> Self {
         cr.matches as f64 / cr.observations as f64
+    }
+}
+
+impl Display for CountingRatio {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}/{} ({:2}%)", self.matches, self.observations, 100.0 * f64::from(*self))
     }
 }
