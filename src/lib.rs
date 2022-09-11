@@ -14,7 +14,7 @@
 //! let mut observations = CountingRatio::new();
 //!
 //! for i in 0..100 {
-//!     observations.observe(&i, |n| n % 7 == 0);
+//!     observations.observe(i % 7 == 0);
 //! }
 //!
 //! assert_eq!(0.15, observations.into());
@@ -34,7 +34,7 @@
 //! let mut observations = CountingRatio::new();
 //!
 //! for s in ["bear", "zoo", "spin", "", "tribe", "", "grip", "lion", "", "cobra", "ape"] {
-//!     observations.observe_with_prior(&s, |s| s.len() > 0, |s| s.contains("a"));
+//!     observations.observe_with_prior(s.len() > 0, s.contains("a"));
 //! }
 //!
 //! assert_eq!(0.375, observations.into());
@@ -49,12 +49,12 @@
 //!
 //! let mut obs1 = CountingRatio::new();
 //! for i in 0..100 {
-//!     obs1.observe(&i, |n| n % 7 == 0);
+//!     obs1.observe(i % 7 == 0);
 //! }
 //!
 //! let mut obs2 = CountingRatio::new();
 //! for i in 0..20 {
-//!     obs2.observe(&i, |n| n % 4 == 0);
+//!     obs2.observe(i % 4 == 0);
 //! }
 //!
 //! let obs3 = obs1 + obs2;
@@ -74,19 +74,17 @@ pub struct CountingRatio {
 impl CountingRatio {
     pub fn new() -> Self {CountingRatio { matches: 0, observations: 0}}
 
-    pub fn observe<T, F: Fn(&T) -> bool>(&mut self, observation: &T, condition: F) {
+    pub fn observe(&mut self, condition_met: bool) {
         self.observations += 1;
-        if condition(observation) {
+        if condition_met {
             self.matches += 1;
         }
     }
 
-    pub fn observe_with_prior<T, P: Fn(&T) -> bool, O: Fn(&T) -> bool>(&mut self, observation: &T,
-                                                                       prior_condition: P,
-                                                                       posterior_condition: O) {
-        if prior_condition(observation) {
+    pub fn observe_with_prior(&mut self, prior_condition_met: bool, posterior_condition_met: bool) {
+        if prior_condition_met {
             self.observations += 1;
-            if posterior_condition(observation) {
+            if posterior_condition_met {
                 self.matches += 1;
             }
         }
