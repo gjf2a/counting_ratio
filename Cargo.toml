@@ -6,3 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+histogram_macros = {git = "https://github.com/gjf2a/histogram_macros"}
+trait-set = "0.3.0"
