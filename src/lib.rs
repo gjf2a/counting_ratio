@@ -62,27 +62,27 @@
 //! assert_eq!("20/120 (16.67%)", format!("{obs3}").as_str());
 //! ```
 //!
-//! `CountingRatio` objects might also be created from other sources. This can 
-//! be useful for comparing ratios without resorting to floating-point calculations, 
+//! `CountingRatio` objects might also be created from other sources. This can
+//! be useful for comparing ratios without resorting to floating-point calculations,
 //! as `CountingRatio` objects implement `Ord` purely with integer arithmetic.
-//! 
+//!
 //! ```
 //! use counting_ratio::CountingRatio;
-//! 
+//!
 //! let v1 = vec![1, 2, 3];
 //! let v2 = vec![4, 5, 6, 7, 8, 9, 10];
 //! let ratio1 = CountingRatio::ratio(v1.len() as u64, (v1.len() + v2.len()) as u64);
 //! assert_eq!("3/10 (30.00%)", format!("{ratio1}").as_str());
-//! 
+//!
 //! let ratio2 = CountingRatio::ratio(3, 7);
 //! assert!(ratio1 < ratio2);
 //! ```
-//! 
-//! `CountingRatio` objects lend themselves to Bayesian calculations. 
-//! 
+//!
+//! `CountingRatio` objects lend themselves to Bayesian calculations.
+//!
 //! ```
 //! use counting_ratio::{CountingRatio, BayesianCounter};
-//! 
+//!
 //! let nums1 = vec![1, 3, 3, 5, 6, 7, 9, 11, 12, 13];
 //! let nums2 = vec![0, 2, 3, 6, 8, 9];
 //! let mut bayesian = BayesianCounter::new();
@@ -92,7 +92,7 @@
 //! for num in nums2.iter() {
 //!     bayesian.observe(*num, "Two");
 //! }
-//! 
+//!
 //! assert_eq!(bayesian.label_count("One"), 10);
 //! assert_eq!(bayesian.label_count("Two"), 6);
 //! assert_eq!(bayesian.p_label("One"), CountingRatio::ratio(10, 16));
@@ -104,23 +104,32 @@
 //! assert_eq!(bayesian.p_label_given_example("One", 3), CountingRatio::ratio(2 * 10 * 16, 10 * 16 * 3));
 //! ```
 
-use core::fmt::{Display, Formatter, Debug};
-use core::ops::{Add, AddAssign, Mul, MulAssign, Div, DivAssign};
+use core::fmt::{Debug, Display, Formatter};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign};
+use histogram_macros::*;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use trait_set::trait_set;
-use histogram_macros::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Ord)]
 pub struct CountingRatio {
-    matches: u64, observations: u64
+    matches: u64,
+    observations: u64,
 }
 
 impl CountingRatio {
-    pub fn new() -> Self {CountingRatio { matches: 0, observations: 0}}
+    pub fn new() -> Self {
+        CountingRatio {
+            matches: 0,
+            observations: 0,
+        }
+    }
 
-    pub fn ratio(matches: u64, observations:u64) -> Self {
-        Self {matches, observations}
+    pub fn ratio(matches: u64, observations: u64) -> Self {
+        Self {
+            matches,
+            observations,
+        }
     }
 
     pub fn observe(&mut self, condition_met: bool) {
@@ -152,7 +161,13 @@ impl From<CountingRatio> for f64 {
 
 impl Display for CountingRatio {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}/{} ({:.2}%)", self.matches, self.observations, 100.0 * f64::from(*self))
+        write!(
+            f,
+            "{}/{} ({:.2}%)",
+            self.matches,
+            self.observations,
+            100.0 * f64::from(*self)
+        )
     }
 }
 
@@ -244,31 +259,36 @@ trait_set! {
 }
 
 pub struct BayesianCounter<L: Countable, S: Countable> {
-    counts: BTreeMap<L,BTreeMap<S,u64>>,
-    total: u64
+    counts: BTreeMap<L, BTreeMap<S, u64>>,
+    total: u64,
 }
 
-impl <L: Countable, S: Countable> BayesianCounter<L, S> {
+impl<L: Countable, S: Countable> BayesianCounter<L, S> {
     pub fn new() -> Self {
-        Self {counts: BTreeMap::new(), total: 0}
+        Self {
+            counts: BTreeMap::new(),
+            total: 0,
+        }
     }
 
     pub fn observe(&mut self, example: S, label: L) {
         match self.counts.get_mut(&label) {
             Some(counter) => {
                 bump!(counter, example);
-            },
+            }
             None => {
                 let mut counter = BTreeMap::new();
                 bump!(counter, example);
                 self.counts.insert(label, counter);
-            },
+            }
         };
         self.total += 1;
     }
 
     pub fn count(&self, example: S, label: L) -> u64 {
-        self.counts.get(&label).map_or(0, |t| t.get(&example).copied().unwrap_or(0))
+        self.counts
+            .get(&label)
+            .map_or(0, |t| t.get(&example).copied().unwrap_or(0))
     }
 
     pub fn label_count(&self, label: L) -> u64 {
@@ -276,7 +296,10 @@ impl <L: Countable, S: Countable> BayesianCounter<L, S> {
     }
 
     pub fn example_count(&self, example: S) -> u64 {
-        self.counts.keys().map(|label| self.count(example, *label)).sum()
+        self.counts
+            .keys()
+            .map(|label| self.count(example, *label))
+            .sum()
     }
 
     pub fn p_label(&self, label: L) -> CountingRatio {
@@ -296,8 +319,17 @@ impl <L: Countable, S: Countable> BayesianCounter<L, S> {
     }
 
     pub fn label_ranking_for(&self, example: S) -> Vec<L> {
-        let mut result: Vec<(CountingRatio, L)> = self.counts.keys().map(|label| (self.p_example_given_label(example, *label) * self.label_count(*label), *label)).collect();
+        let mut result: Vec<(CountingRatio, L)> = self
+            .counts
+            .keys()
+            .map(|label| {
+                (
+                    self.p_example_given_label(example, *label) * self.label_count(*label),
+                    *label,
+                )
+            })
+            .collect();
         result.sort();
-        result.iter().map(|(_,label)| *label).collect()
+        result.iter().map(|(_, label)| *label).collect()
     }
 }
