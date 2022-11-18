@@ -1,0 +1,4 @@
+/target
+/Cargo.lock
+/.idea
+/counting_ratio.iml

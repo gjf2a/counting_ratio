@@ -62,6 +62,16 @@
 //! assert_eq!("20/120 (16.67%)", format!("{}", obs3).as_str());
 //! ```
 //!
+//! `CountingRatio` objects might also be created from other sources:
+//! 
+//! ```
+//! use counting_ratio::CountingRatio;
+//! 
+//! let v1 = vec![1, 2, 3];
+//! let v2 = vec![4, 5, 6, 7, 8, 9, 10];
+//! let ratio = CountingRatio::ratio(v1.len() as u64, (v1.len() + v2.len()) as u64);
+//! assert_eq!("3/10 (30.00%)", format!("{ratio}").as_str());
+//! ```
 
 use core::fmt::{Display, Formatter};
 use core::ops::{Add, AddAssign};
@@ -73,6 +83,10 @@ pub struct CountingRatio {
 
 impl CountingRatio {
     pub fn new() -> Self {CountingRatio { matches: 0, observations: 0}}
+
+    pub fn ratio(matches: u64, observations:u64) -> Self {
+        Self {matches, observations}
+    }
 
     pub fn observe(&mut self, condition_met: bool) {
         self.observations += 1;
